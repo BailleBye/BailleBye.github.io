@@ -1,0 +1,77 @@
+name: Build repos.json
+
+# Régénère repos.json à partir de tes repos publics tagués "homebase".
+on:
+  schedule:
+    - cron: "0 6 * * *"      # tous les jours à 06:00 UTC
+  push:
+    branches: [ main ]        # à chaque mise à jour du lanceur
+  workflow_dispatch: {}       # bouton "Run workflow" pour rafraîchir tout de suite
+
+# nécessaire pour que l'Action puisse committer repos.json
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Générer repos.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const USER = context.repo.owner;
+            const TOPIC = "homebase";
+            const PAGES_BASE = `https://${USER.toLowerCase()}.github.io`;
+            const SELF = `${USER.toLowerCase()}.github.io`;   // le repo du lanceur, à exclure
+
+            // Tous les repos PUBLICS de l'utilisateur (paginé, 100 max/page).
+            // Authentifié via le GITHUB_TOKEN intégré (jeton éphémère, jamais exposé).
+            const all = await github.paginate(github.rest.repos.listForUser, {
+              username: USER,
+              type: "owner",
+              per_page: 100,
+              sort: "pushed",
+              direction: "desc",
+            });
+
+            const projects = all
+              // on ne garde que les repos tagués "homebase"
+              .filter(r => (r.topics || []).map(t => t.toLowerCase()).includes(TOPIC))
+              // et on exclut le lanceur lui-même
+              .filter(r => r.name.toLowerCase() !== SELF)
+              .map(r => {
+                // URL d'ouverture : champ "Website" explicite > GitHub Page par convention > repo
+                let url;
+                if (r.homepage && r.homepage.trim())      url = r.homepage.trim();
+                else if (r.has_pages)                     url = `${PAGES_BASE}/${r.name}/`;
+                else                                      url = r.html_url;
+                return {
+                  name: r.name,
+                  description: r.description || "",
+                  language: r.language || "",
+                  url,
+                  repo: r.html_url,
+                  hasPage: !!r.has_pages,
+                  archived: !!r.archived,
+                  pushedAt: r.pushed_at,
+                };
+              });
+
+            fs.writeFileSync("repos.json", JSON.stringify(projects, null, 2) + "\n");
+            core.info(`${all.length} repo(s) public(s), ${projects.length} tagué(s) "${TOPIC}".`);
+
+      - name: Committer repos.json si modifié
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repos.json
+          if git diff --staged --quiet; then
+            echo "repos.json inchangé, rien à committer."
+          else
+            git commit -m "chore: maj repos.json [skip ci]"
+            git push
+          fi

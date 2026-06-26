@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover : on gère les encoches iPhone via les safe-areas en CSS -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HomeBase</title>
+<meta name="description" content="Lanceur perso vers tous mes projets.">
+
+<!-- Couleur de la barre d'état / fond système -->
+<meta name="theme-color" content="#15181b">
+
+<!-- Installation iOS (Add to Home Screen) : iOS s'appuie sur ces balises, pas sur le manifest -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HomeBase">
+<link rel="apple-touch-icon" href="icon-180.png">
+
+<!-- Manifest PWA (Android / desktop) -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+
+<style>
+  :root {
+    --bg: #15181b;
+    --surface: #1d2228;
+    --surface-press: #252c33;
+    --border: #2c343b;
+    --text: #e7eaed;
+    --muted: #8a949e;
+    --accent: #aab464;          /* olive : utilisé avec parcimonie */
+    --dim: #545d65;             /* point « repo seulement » */
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { margin: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100svh;
+    /* safe-areas pour iPhone à encoche */
+    padding:
+      calc(env(safe-area-inset-top) + 22px)
+      calc(env(safe-area-inset-right) + 18px)
+      calc(env(safe-area-inset-bottom) + 18px)
+      calc(env(safe-area-inset-left) + 18px);
+  }
+
+  .wrap { max-width: 540px; margin: 0 auto; }
+
+  /* ---- en-tête ---- */
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 18px;
+  }
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .wordmark b { color: var(--accent); font-weight: 600; }
+  .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- recherche (masquée tant qu'il y a peu de projets) ---- */
+  .search { margin-bottom: 16px; }
+  .search.hidden { display: none; }
+  .search input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 13px 14px;
+    outline: none;
+  }
+  .search input::placeholder { color: var(--muted); }
+  .search input:focus { border-color: var(--accent); }
+
+  /* ---- liste de projets ---- */
+  .list { display: flex; flex-direction: column; gap: 10px; }
+
+  .card {
+    display: flex;
+    align-items: stretch;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  /* zone principale = tap qui ouvre le projet */
+  .card-main {
+    flex: 1 1 auto;
+    min-width: 0;                /* indispensable pour l'ellipsis */
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 16px 14px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .card-main:active { background: var(--surface-press); }
+
+  .dot {
+    flex: 0 0 auto;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--dim);
+  }
+  .dot.live { background: var(--accent); }
+
+  .body { min-width: 0; flex: 1 1 auto; }
+  .name {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 3px;
+  }
+  .desc {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lang {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0.8;
+  }
+  .chevron { flex: 0 0 auto; color: var(--muted); font-size: 22px; line-height: 1; }
+
+  /* lien secondaire « code » (vers le repo) */
+  .card-code {
+    flex: 0 0 auto;
+    display: flex; align-items: center;
+    padding: 0 15px;
+    border-left: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .card-code:active { background: var(--surface-press); color: var(--text); }
+
+  /* ---- pied : ligne de statut ---- */
+  .status {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .status .dotsync { color: var(--accent); margin-right: 6px; }
+  .status.offline .dotsync { color: var(--dim); }
+  .refresh {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.02em;
+    color: var(--muted); padding: 6px 4px;
+  }
+  .refresh:active { color: var(--accent); }
+  .refresh:disabled { opacity: 0.5; }
+
+  /* ---- états (chargement / vide / erreur) ---- */
+  .skeleton { height: 66px; border-radius: 14px; background: var(--surface); opacity: 0.6; }
+  .note {
+    text-align: center;
+    color: var(--muted);
+    padding: 38px 10px;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+  .note code {
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+  /* fondu discret à l'apparition, désactivé si l'utilisateur préfère moins de mouvement */
+  @media (prefers-reduced-motion: no-preference) {
+    .card, .note { animation: in 0.22s ease both; }
+    @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <span class="wordmark">home<b>base</b></span>
+    <span class="count" id="count"></span>
+  </header>
+
+  <div class="search hidden" id="searchBox">
+    <input id="search" type="search" inputmode="search" autocomplete="off"
+           autocapitalize="off" spellcheck="false"
+           placeholder="rechercher un projet…" aria-label="Rechercher un projet">
+  </div>
+
+  <main class="list" id="list" aria-live="polite"></main>
+
+  <div class="status" id="status">
+    <span id="statusText"></span>
+    <button class="refresh" id="refresh" type="button">actualiser</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   HomeBase — lanceur perso
+   Données : repos.json, servi par GitHub Pages, régénéré chaque
+   jour par une GitHub Action. Aucun appel direct à l'API GitHub
+   ici → aucune limite de débit, aucun token côté client.
+   ============================================================ */
+
+const REPOS_URL = "repos.json";
+const STORAGE_KEY = "homebase:repos:v1";
+const SEARCH_THRESHOLD = 7;          // la barre de recherche n'apparaît qu'au-delà
+
+const $list   = document.getElementById("list");
+const $count  = document.getElementById("count");
+const $search = document.getElementById("search");
+const $searchBox = document.getElementById("searchBox");
+const $status = document.getElementById("status");
+const $statusText = document.getElementById("statusText");
+const $refresh = document.getElementById("refresh");
+
+let repos = [];
+
+/* ---------- petits utilitaires ---------- */
+
+// échappe le texte avant de l'injecter dans le HTML
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+// "Course-List" / "mon_projet" -> "Course List" / "Mon Projet"
+function prettify(name) {
+  return name.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// minuscule + suppression des accents : recherche tolérante (ex. "geneve" trouve "Genève")
+function normalize(s) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function timeAgo(ts) {
+  const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (sec < 45) return "à l'instant";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return "il y a " + min + " min";
+  const h = Math.floor(min / 60);
+  if (h < 24) return "il y a " + h + " h";
+  return "il y a " + Math.floor(h / 24) + " j";
+}
+
+/* ---------- recherche floue ----------
+   Renvoie un score (plus petit = meilleur) ou -1 si aucune correspondance.
+   1) sous-chaîne directe (bonus si en début de mot)
+   2) sinon, sous-séquence : les lettres apparaissent dans l'ordre, on
+      pénalise les "trous" entre elles. */
+function fuzzy(query, target) {
+  const q = normalize(query), t = normalize(target);
+  if (!q) return 0;
+  const idx = t.indexOf(q);
+  if (idx !== -1) return idx;                 // sous-chaîne : score = position
+  let from = 0, gaps = 0, last = -1;
+  for (const ch of q) {
+    const hit = t.indexOf(ch, from);
+    if (hit === -1) return -1;                // une lettre manque -> pas de match
+    if (last !== -1) gaps += hit - last - 1;
+    last = hit; from = hit + 1;
+  }
+  return 1000 + gaps;                         // sous-séquences classées après les sous-chaînes
+}
+
+// meilleur score sur nom (prioritaire) puis description
+function score(query, repo) {
+  let best = -1;
+  for (const cand of [prettify(repo.name), repo.name]) {
+    const s = fuzzy(query, cand);
+    if (s !== -1 && (best === -1 || s < best)) best = s;
+  }
+  if (best !== -1) return best;
+  const d = fuzzy(query, repo.description || "");
+  return d === -1 ? -1 : 5000 + d;            // la description compte moins que le nom
+}
+
+/* ---------- rendu ---------- */
+
+function cardHTML(r) {
+  const live = !!r.hasPage;                   // page en ligne -> point olive ; sinon repo seul -> point gris
+  const showCode = r.url !== r.repo;          // si le tap ouvre une Page, on propose un accès "code" séparé
+  const lang = r.language ? `<span class="lang">${esc(r.language)}</span>` : "";
+  const desc = r.description
+    ? `<span class="desc">${esc(r.description)}</span>`
+    : `<span class="desc">${live ? "page en ligne" : "code uniquement"}</span>`;
+  const code = showCode
+    ? `<a class="card-code" href="${esc(r.repo)}" target="_blank" rel="noopener" aria-label="Code de ${esc(r.name)}">code ↗</a>`
+    : "";
+  return `
+    <div class="card">
+      <a class="card-main" href="${esc(r.url)}" target="_blank" rel="noopener">
+        <span class="dot ${live ? "live" : ""}"></span>
+        <span class="body">
+          <span class="name">${esc(prettify(r.name))}</span>
+          <span class="meta">${desc}${lang}</span>
+        </span>
+        <span class="chevron" aria-hidden="true">›</span>
+      </a>
+      ${code}
+    </div>`;
+}
+
+function render() {
+  const q = $search.value.trim();
+  let items = repos;
+  if (q) {
+    items = repos
+      .map(r => ({ r, s: score(q, r) }))
+      .filter(x => x.s !== -1)
+      .sort((a, b) => a.s - b.s)
+      .map(x => x.r);
+  }
+  // sans recherche : on garde l'ordre de repos.json (déjà trié par activité récente)
+
+  if (items.length === 0) {
+    $list.innerHTML = q
+      ? `<p class="note">Aucun projet ne correspond à « ${esc(q)} ».</p>`
+      : `<p class="note">Aucun projet tagué <code>homebase</code> pour l'instant.<br>
+         Ajoute le topic <code>homebase</code> à un repo pour le voir apparaître ici.</p>`;
+  } else {
+    $list.innerHTML = items.map(cardHTML).join("");
+  }
+
+  const n = repos.length;
+  $count.textContent = n ? n + (n > 1 ? " projets" : " projet") : "";
+  $searchBox.classList.toggle("hidden", n <= SEARCH_THRESHOLD);
+}
+
+function showLoading() {
+  $list.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
+}
+
+function showError() {
+  $list.innerHTML = `<p class="note">Connexion impossible et aucune donnée en cache.<br>
+    Reconnecte-toi puis touche « actualiser ».</p>`;
+}
+
+function setStatus(state, ts) {
+  $status.classList.toggle("offline", state !== "online");
+  const when = ts ? timeAgo(ts) : "";
+  if (state === "online")      $statusText.innerHTML = `<span class="dotsync">●</span>synchronisé ${when}`;
+  else if (state === "cache")  $statusText.innerHTML = `<span class="dotsync">●</span>en cache · ${when}`;
+  else                         $statusText.innerHTML = `<span class="dotsync">○</span>hors-ligne · ${when}`;
+}
+
+/* ---------- cache local (ouverture instantanée + hors-ligne) ---------- */
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeCache(obj) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); } catch {}
+}
+
+/* ---------- chargement (stale-while-revalidate) ----------
+   1) on affiche tout de suite le cache local s'il existe
+   2) on rafraîchit en tâche de fond depuis repos.json
+   Le service worker assure en plus le fonctionnement hors-ligne. */
+async function load() {
+  const cached = readCache();
+  if (cached && Array.isArray(cached.repos)) {
+    repos = cached.repos;
+    render();
+    setStatus("cache", cached.fetchedAt);
+  } else {
+    showLoading();
+  }
+
+  $refresh.disabled = true;
+  try {
+    // no-store : on veut la version la plus fraîche ; le SW gère le repli hors-ligne
+    const res = await fetch(REPOS_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    repos = Array.isArray(data) ? data : [];
+    const fetchedAt = Date.now();
+    writeCache({ repos, fetchedAt });
+    render();
+    setStatus("online", fetchedAt);
+  } catch (e) {
+    if (cached) setStatus("offline", cached.fetchedAt);  // on garde le cache à l'écran
+    else showError();
+  } finally {
+    $refresh.disabled = false;
+  }
+}
+
+/* ---------- interactions ---------- */
+
+$search.addEventListener("input", render);
+
+// Entrée dans la recherche -> ouvre le premier résultat
+$search.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const top = $list.querySelector(".card-main");
+  if (top) window.open(top.href, "_blank", "noopener");
+});
+
+$refresh.addEventListener("click", load);
+
+/* ---------- service worker (offline + installable) ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
+load();
+</script>
+</body>
+</html>
