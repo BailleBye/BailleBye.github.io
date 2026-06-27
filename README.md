@@ -87,6 +87,8 @@ dans le champ « Website » du repo (l'Action l'utilise en priorité). En attend
   qui prime.
 - **Hors-ligne** : le service worker met la coquille en cache et les données sont gardées
   en cache local ; l'app s'ouvre instantanément même sans réseau, puis se rafraîchit en fond.
+- **Mises à jour** : quand tu déploies une nouvelle version (et que tu as bumpé `CACHE`),
+  l'app affiche une barre « mettre à jour » au lieu de changer en douce — tu choisis quand recharger.
 
 ---
 
@@ -96,6 +98,6 @@ dans le champ « Website » du repo (l'Action l'utilise en priorité). En attend
 - **Quand la recherche apparaît** : constante `SEARCH_THRESHOLD` dans `index.html`.
 - **Fréquence de mise à jour** : `cron` dans `.github/workflows/build-repos.yml`.
 - **Après modif de l'app** (`index.html`, `sw.js`, icônes) : incrémente `CACHE` dans
-  `sw.js` (`homebase-v1` → `homebase-v2`…) pour que les appareils récupèrent la nouvelle version.
+  `sw.js` (`homebase-v2` → `homebase-v3`…). L'app proposera alors une barre « mettre à jour ».
 
 > `repos.json` est généré automatiquement — ne pas l'éditer à la main, il serait écrasé.

@@ -206,6 +206,29 @@
 
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
+  /* barre de mise à jour (cachée hors écran par défaut) */
+  .update-bar {
+    position: fixed; left: 50%;
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    transform: translateX(-50%) translateY(160%);
+    width: calc(100% - 36px); max-width: 504px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 11px 12px 11px 16px;
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    transition: transform 0.28s ease; z-index: 50;
+  }
+  .update-bar.show { transform: translateX(-50%) translateY(0); }
+  .update-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .update-bar button {
+    font-family: var(--mono); font-size: 12px; cursor: pointer;
+    background: var(--accent); color: var(--bg); border: none;
+    border-radius: 8px; padding: 7px 12px; font-weight: 600;
+  }
+  .update-bar #updateDismiss { background: none; color: var(--muted); padding: 6px 9px; font-size: 17px; font-weight: 400; }
+  @media (prefers-reduced-motion: reduce) { .update-bar { transition: none; } }
+
   /* fondu discret à l'apparition, désactivé si l'utilisateur préfère moins de mouvement */
   @media (prefers-reduced-motion: no-preference) {
     .card, .note { animation: in 0.22s ease both; }
@@ -232,6 +255,14 @@
     <span id="statusText"></span>
     <button class="refresh" id="refresh" type="button">actualiser</button>
   </div>
+</div>
+
+<div class="update-bar" id="updateBar" role="status">
+  <span>Nouvelle version disponible</span>
+  <span class="update-actions">
+    <button id="updateBtn" type="button">mettre à jour</button>
+    <button id="updateDismiss" type="button" aria-label="Plus tard">×</button>
+  </span>
 </div>
 
 <script>
@@ -478,10 +509,53 @@ $search.addEventListener("keydown", (e) => {
 
 $refresh.addEventListener("click", load);
 
-/* ---------- service worker (offline + installable) ---------- */
+/* ---------- service worker + mise à jour contrôlée ----------
+   Au lieu d'appliquer la nouvelle version en douce, on prévient via une
+   barre « mettre à jour » et c'est l'utilisateur qui déclenche le rechargement. */
 if ("serviceWorker" in navigator) {
+  let pendingReload = false;
+
+  // recharge une seule fois, quand la nouvelle version prend le contrôle
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!pendingReload) return;      // on ignore la 1re prise de contrôle (install initiale)
+    pendingReload = false;
+    location.reload();
+  });
+
+  function applyUpdate(worker) {
+    pendingReload = true;
+    worker.postMessage({ type: "SKIP_WAITING" });   // demande au SW en attente de s'activer
+  }
+
+  function showUpdate(worker) {
+    const bar = document.getElementById("updateBar");
+    if (!bar) return;
+    bar.classList.add("show");
+    document.getElementById("updateBtn").onclick = () => { bar.classList.remove("show"); applyUpdate(worker); };
+    document.getElementById("updateDismiss").onclick = () => bar.classList.remove("show");
+  }
+
+  function watch(reg) {
+    // une nouvelle version déjà en attente (d'une visite précédente)
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const sw = reg.installing;
+      if (!sw) return;
+      sw.addEventListener("statechange", () => {
+        // "installed" + un SW contrôle déjà = mise à jour (et non 1re installation)
+        if (sw.state === "installed" && navigator.serviceWorker.controller) showUpdate(sw);
+      });
+    });
+  }
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      watch(reg);
+      // revérifie une MAJ quand l'app revient au premier plan
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reg.update();
+      });
+    }).catch(() => {});
   });
 }
 

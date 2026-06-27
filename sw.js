@@ -8,7 +8,7 @@
      normal et leur propre service worker s'il existe.
    ============================================================ */
 
-const CACHE = "homebase-v1";
+const CACHE = "homebase-v2";
 
 const SHELL = [
   "./",
@@ -23,11 +23,13 @@ const SHELL = [
 const SHELL_PATHS = new Set(SHELL.map(p => new URL(p, self.location).pathname));
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll(SHELL))
-      .then(() => self.skipWaiting())
-  );
+  // pas de skipWaiting auto : la nouvelle version attend que l'utilisateur valide
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
+});
+
+// la page demande l'activation immédiate (bouton « mettre à jour »)
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

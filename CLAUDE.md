@@ -73,6 +73,12 @@ direct dans le front.
   déchargée, l'écriture du compteur d'usage est fiable.)
 - **Point de statut = info réelle**, pas déco : olive = `hasPage` (Page en ligne),
   gris = repo seul.
+- **Mise à jour contrôlée (pas de `skipWaiting` auto).** Le nouveau SW reste en attente ;
+  la page détecte l'état `waiting`/`installed` (avec un contrôleur existant = c'est une
+  MAJ, pas une 1re install) et affiche une barre « mettre à jour ». Au clic, la page
+  envoie `SKIP_WAITING` au SW, écoute `controllerchange`, et recharge **une seule fois**
+  (flag `pendingReload` pour ignorer la prise de contrôle initiale). `reg.update()` au
+  retour au premier plan pour proposer la MAJ vite sur l'app installée.
 
 ## Conventions (à respecter pour ajouter des projets)
 
@@ -131,8 +137,11 @@ direct dans le front.
 - **Forme des données** : si tu changes les champs de `repos.json`, bumper
   `STORAGE_KEY` (cache local) ET `CACHE` (`sw.js`) pour invalider l'ancien cache.
 - **Mise à jour de la coquille** : tout changement d'`index.html`/`sw.js`/icônes
-  nécessite de **bumper `CACHE` dans `sw.js`** (`homebase-v1` → `-v2`…), sinon les
-  clients servent l'ancienne version en cache.
+  nécessite de **bumper `CACHE` dans `sw.js`** (`homebase-v2` → `-v3`…). Les appareils
+  voient alors la barre « mettre à jour » au prochain passage au premier plan.
+  Exception : le tout premier passage depuis une version SANS ce mécanisme (l'ancien
+  `v1` auto-skipWaiting) se fait en silence à la prochaine **fermeture/réouverture
+  complète** de l'app — la barre prend le relais pour toutes les MAJ suivantes.
 
 ## À ne pas faire
 
