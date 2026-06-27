@@ -245,6 +245,7 @@
 const REPOS_URL = "repos.json";
 const STORAGE_KEY = "homebase:repos:v1";
 const SEARCH_THRESHOLD = 7;          // la barre de recherche n'apparaît qu'au-delà
+const USAGE_KEY = "homebase:usage:v1"; // compteur de lancements, pour le tri par usage
 
 const $list   = document.getElementById("list");
 const $count  = document.getElementById("count");
@@ -282,6 +283,21 @@ function timeAgo(ts) {
   const h = Math.floor(min / 60);
   if (h < 24) return "il y a " + h + " h";
   return "il y a " + Math.floor(h / 24) + " j";
+}
+
+/* ---------- usage ----------
+   On compte combien de fois chaque projet est lancé pour faire remonter les
+   plus utilisés. Stocké en local ; sans incidence si localStorage indisponible. */
+function readUsage() {
+  try { return JSON.parse(localStorage.getItem(USAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+function bumpUsage(name) {
+  try {
+    const u = readUsage();
+    u[name] = (u[name] || 0) + 1;
+    localStorage.setItem(USAGE_KEY, JSON.stringify(u));
+  } catch {}
 }
 
 /* ---------- recherche floue ----------
@@ -329,7 +345,7 @@ function cardHTML(r) {
     ? `<a class="card-code" href="${esc(r.repo)}" target="_blank" rel="noopener" aria-label="Code de ${esc(r.name)}">code ↗</a>`
     : "";
   return `
-    <div class="card">
+    <div class="card" data-name="${esc(r.name)}">
       <a class="card-main" href="${esc(r.url)}" target="_blank" rel="noopener">
         <span class="dot ${live ? "live" : ""}"></span>
         <span class="body">
@@ -344,15 +360,22 @@ function cardHTML(r) {
 
 function render() {
   const q = $search.value.trim();
-  let items = repos;
+  let items;
   if (q) {
+    // avec recherche : la pertinence prime
     items = repos
       .map(r => ({ r, s: score(q, r) }))
       .filter(x => x.s !== -1)
       .sort((a, b) => a.s - b.s)
       .map(x => x.r);
+  } else {
+    // sans recherche : les plus lancés remontent, puis l'ordre de repos.json (récence)
+    const usage = readUsage();
+    items = repos
+      .map((r, i) => ({ r, i, u: usage[r.name] || 0 }))
+      .sort((a, b) => (b.u - a.u) || (a.i - b.i))
+      .map(x => x.r);
   }
-  // sans recherche : on garde l'ordre de repos.json (déjà trié par activité récente)
 
   if (items.length === 0) {
     $list.innerHTML = q
@@ -434,11 +457,23 @@ async function load() {
 
 $search.addEventListener("input", render);
 
-// Entrée dans la recherche -> ouvre le premier résultat
+// Compte un lancement quand on ouvre un projet (le tap principal, pas le lien « code »).
+// On ne réordonne pas tout de suite : le nouvel ordre s'applique au prochain chargement.
+$list.addEventListener("click", (e) => {
+  const main = e.target.closest(".card-main");
+  if (!main) return;
+  const name = main.closest(".card")?.dataset.name;
+  if (name) bumpUsage(name);
+});
+
+// Entrée dans la recherche -> ouvre (et compte) le premier résultat
 $search.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   const top = $list.querySelector(".card-main");
-  if (top) window.open(top.href, "_blank", "noopener");
+  if (!top) return;
+  const name = top.closest(".card")?.dataset.name;
+  if (name) bumpUsage(name);
+  window.open(top.href, "_blank", "noopener");
 });
 
 $refresh.addEventListener("click", load);

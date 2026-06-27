@@ -1,76 +1,101 @@
 # HomeBase
 
-Lanceur perso : une icône sur l'écran d'accueil, tes projets en gros boutons,
-recherche floue, accès direct à chaque GitHub Page. Les projets apparaissent
-**automatiquement** dès qu'un repo porte le topic `homebase` — aucune liste à maintenir.
+Lanceur perso : une icône sur l'écran d'accueil, mes projets en gros boutons, recherche
+floue, accès direct à chaque GitHub Page. Les projets apparaissent **automatiquement**
+dès qu'un repo porte le topic `homebase` — aucune liste à maintenir.
 
-## Contenu
+**En ligne :** https://baillebye.github.io/
 
-```
-index.html                      l'app (HTML + CSS + JS, tout-en-un)
-manifest.json                   manifest PWA
-sw.js                           service worker (offline + installable)
-repos.json                      données des projets (généré par l'Action — ne pas éditer à la main)
-icon-180/192/512(.png)          icônes de l'app
-icon-maskable-512.png           icône maskable (Android)
-.github/workflows/build-repos.yml   l'Action qui régénère repos.json
-```
+---
+
+## État du projet
+
+**Fait :**
+- [x] App complète (`index.html`) : UI sombre, recherche floue (masquée ≤ 7 projets),
+      cartes tactiles, ligne de statut, bouton actualiser, états chargement/vide/erreur.
+- [x] Hors-ligne + installable : `manifest.json`, balises iOS, `sw.js` (service worker).
+- [x] Données auto : GitHub Action qui régénère `repos.json` (quotidien + à chaque push + manuel).
+- [x] Icônes + `repos.json` de départ.
+
+**À faire (déploiement, une fois) :**
+- [ ] Créer le repo `BailleBye.github.io` et pousser les fichiers.
+- [ ] Activer GitHub Pages.
+- [ ] Passer les permissions Actions en « Read and write ».
+- [ ] Lancer le workflow une fois.
+- [ ] Ajouter à l'écran d'accueil (Safari iOS).
+- [ ] Course-List : renommer `courses.html` → `index.html` (ou remplir « Website »).
+
+Une fois ça fait, le projet tourne tout seul : tu n'y reviens que pour ajouter un projet.
+
+---
+
+## Ajouter un projet à HomeBase
+
+C'est la seule manip récurrente, et elle prend 30 secondes :
+
+1. Le repo doit être **public**.
+2. Son fichier d'entrée doit être **`index.html` à la racine du repo** → ça donne l'URL
+   propre `https://baillebye.github.io/<nom-du-repo>/`. (GitHub Pages ne sert pas un
+   `autre.html` automatiquement.)
+3. Ajoute le topic **`homebase`** : page du repo → roue ⚙️ à côté de « About » →
+   champ **Topics** → tape `homebase` → Entrée → **Save changes**. (Minuscules obligatoires.)
+4. (Optionnel) Remplis la **description** du repo (elle s'affiche sous le nom) et/ou le
+   champ **Website** (il force l'URL d'ouverture si tu veux pointer ailleurs).
+
+Le projet apparaît dans HomeBase :
+- automatiquement au prochain passage de l'Action (chaque jour à 06:00 UTC), **ou**
+- tout de suite si tu relances le workflow à la main :
+  onglet **Actions → « Build repos.json » → Run workflow**.
+
+Le **nom du repo devient le libellé** du bouton (les `-` et `_` deviennent des espaces,
+première lettre en majuscule). Nomme le repo en conséquence. Le point à gauche est olive
+si la GitHub Page est en ligne, gris si c'est un repo sans Page (le bouton ouvre alors le repo).
+
+---
 
 ## Déploiement (une seule fois)
 
-1. **Crée le repo** `BailleBye.github.io` (public). Le nom doit être exactement ça :
-   c'est ce qui sert ton lanceur à la racine `https://baillebye.github.io/`.
+1. **Crée le repo** `BailleBye.github.io` (public) — le nom exact sert le lanceur à la racine.
+2. **Pousse ces fichiers** à la racine, dossier `.github/workflows/` inclus.
+3. **Active Pages** : *Settings → Pages → Source : « Deploy from a branch » →
+   `main` / `/ (root)`*.
+4. **Autorise l'écriture** : *Settings → Actions → General → Workflow permissions →
+   « Read and write permissions »*. (Sans ça, l'Action ne peut pas mettre à jour `repos.json`.)
+5. **Lance l'Action** une fois : *Actions → « Build repos.json » → Run workflow*.
+6. **Installe** : ouvre `https://baillebye.github.io/` dans **Safari** → Partager →
+   **« Sur l'écran d'accueil »**.
 
-2. **Ajoute ces fichiers** à la racine du repo, en gardant le dossier
-   `.github/workflows/` tel quel. (Le plus simple : dézippe et glisse tout, ou
-   `git add . && git commit && git push`.)
+### À régler pour Course-List
+Son fichier déployé est `courses.html` → l'URL propre `/Course-List/` renvoie une 404.
+Soit tu renommes `courses.html` → `index.html` (recommandé, et garde cette convention pour
+tes futurs projets), soit tu mets `https://baillebye.github.io/Course-List/courses.html`
+dans le champ « Website » du repo (l'Action l'utilise en priorité). En attendant, le
+`repos.json` fourni pointe déjà vers `courses.html`.
 
-3. **Active GitHub Pages** : *Settings → Pages → Build and deployment →
-   Source : « Deploy from a branch » → Branch : `main` / `/ (root)`* → Save.
-
-4. **Autorise l'Action à écrire** (sinon elle ne peut pas mettre à jour `repos.json`) :
-   *Settings → Actions → General → Workflow permissions →* coche
-   **« Read and write permissions »** → Save.
-
-5. **Lance l'Action une fois** pour générer `repos.json` maintenant :
-   *onglet Actions → « Build repos.json » → Run workflow*. Ensuite elle tourne
-   toute seule chaque jour (et à chaque push).
-
-6. **Ouvre** `https://baillebye.github.io/` dans **Safari** sur l'iPhone →
-   bouton Partager → **« Sur l'écran d'accueil »**. L'icône HomeBase apparaît,
-   ça s'ouvre en plein écran sans barre Safari.
-
-## ⚠️ À régler pour Course-List
-
-Son fichier déployé est `courses.html`, pas `index.html` → l'URL propre
-`baillebye.github.io/Course-List/` renvoie une 404. Deux options (10 s) :
-
-- **Recommandé** : renomme `courses.html` → `index.html` dans le repo Course-List.
-  Le bouton ouvrira alors `baillebye.github.io/Course-List/` proprement, et c'est
-  la convention à garder pour tes futurs projets (toujours un `index.html` à la racine).
-- **Sinon** : *Settings du repo Course-List → champ « Website »* → mets
-  `https://baillebye.github.io/Course-List/courses.html`. L'Action utilise ce champ
-  en priorité s'il est rempli.
-
-(En attendant, `repos.json` pointe déjà vers `courses.html`, donc le bouton marche
-dès le premier déploiement.)
-
-## Ajouter un projet plus tard
-
-Mets le topic `homebase` sur le repo (*page du repo → roue ⚙️ à côté de « About »
-→ Topics → `homebase` → Save*). Il apparaît dans HomeBase à la prochaine exécution
-de l'Action — ou tout de suite si tu relances le workflow à la main (étape 5).
+---
 
 ## Comment ça marche
 
-- **Pas d'API GitHub au runtime** : l'Action interroge l'API côté serveur (avec le
-  `GITHUB_TOKEN` intégré, éphémère et jamais exposé), filtre tes repos tagués
-  `homebase`, et écrit `repos.json` dans le repo. L'app ne lit que ce fichier statique
-  → **aucune limite de débit, aucun token côté client.**
-- **Ordre d'ouverture de chaque projet** : champ « Website » s'il est rempli, sinon
-  la GitHub Page par convention (`baillebye.github.io/<repo>/`), sinon le repo.
-- **Hors-ligne** : le service worker met en cache la coquille de l'app ; les données
-  sont aussi gardées en cache local. L'app s'ouvre instantanément, même sans réseau,
-  et se rafraîchit en arrière-plan.
-- **Recherche** : masquée tant que tu as ≤ 7 projets (inutile sur 2 boutons),
-  elle apparaît automatiquement au-delà.
+- **Aucun appel à l'API GitHub côté navigateur.** Une GitHub Action interroge l'API côté
+  serveur (avec le `GITHUB_TOKEN` intégré, éphémère, jamais exposé), garde tes repos
+  tagués `homebase`, et écrit `repos.json` dans le repo. L'app ne lit que ce fichier
+  statique → **pas de limite de débit, pas de token côté client.**
+- **Ordre d'ouverture d'un projet** : champ « Website » s'il est rempli → GitHub Page par
+  convention → repo.
+- **Tri** : les projets que tu ouvres le plus remontent automatiquement (compté en local,
+  par appareil), départagés par la date du dernier push. En recherche, c'est la pertinence
+  qui prime.
+- **Hors-ligne** : le service worker met la coquille en cache et les données sont gardées
+  en cache local ; l'app s'ouvre instantanément même sans réseau, puis se rafraîchit en fond.
+
+---
+
+## Personnaliser
+
+- **Couleurs / thème** : variables CSS dans `:root` (haut de `index.html`).
+- **Quand la recherche apparaît** : constante `SEARCH_THRESHOLD` dans `index.html`.
+- **Fréquence de mise à jour** : `cron` dans `.github/workflows/build-repos.yml`.
+- **Après modif de l'app** (`index.html`, `sw.js`, icônes) : incrémente `CACHE` dans
+  `sw.js` (`homebase-v1` → `homebase-v2`…) pour que les appareils récupèrent la nouvelle version.
+
+> `repos.json` est généré automatiquement — ne pas l'éditer à la main, il serait écrasé.
