@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Garde les GitHub Actions à jour. Dependabot ouvre une PR quand une action
+  # épinglée a une nouvelle version : il bumpe le SHA ET le commentaire de version.
+  # C'est le complément du SHA-pinning : intégrité + on ne rate pas les patchs.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

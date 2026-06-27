@@ -44,7 +44,8 @@ direct dans le front.
 | `sw.js` | Coquille en cache (offline) + `repos.json` réseau-d'abord. |
 | `repos.json` | Données projets. **Généré par l'Action — ne pas éditer à la main.** |
 | `icon-180/192/512.png`, `icon-maskable-512.png` | Icônes (maison olive sur charcoal). |
-| `.github/workflows/build-repos.yml` | Régénère `repos.json`. |
+| `.github/workflows/build-repos.yml` | Régénère `repos.json`. Actions épinglées sur SHA. |
+| `.github/dependabot.yml` | Maj hebdo des actions (bumpe le SHA + le commentaire de version). |
 
 ## Décisions & raisons (le « pourquoi »)
 
@@ -56,6 +57,11 @@ direct dans le front.
   sur `has_pages` (raterait un futur projet code-only voulu dans le lanceur).
 - **Auth de l'Action via `GITHUB_TOKEN` intégré** (pas un PAT). Jeton éphémère, scopé au
   repo, jamais exposé. `permissions: contents: write` pour committer `repos.json`.
+- **Actions épinglées sur le SHA de commit** (`actions/checkout`, `actions/github-script`),
+  pas sur `@v4`/`@v7`. Un tag mobile repointé (compromission amont) ne peut pas changer ce
+  qui s'exécute. Le commentaire `# vX.Y.Z` garde la lisibilité. `dependabot.yml` bumpe SHA
+  + commentaire chaque semaine → intégrité sans rater les patchs. **Pour mettre à jour une
+  action à la main** : remplacer le SHA par celui de la nouvelle release et corriger le commentaire.
 - **Ordre de résolution de l'URL d'un projet** : champ `homepage` (« Website ») s'il est
   rempli → GitHub Page par convention `baillebye.github.io/<repo>/` → sinon `html_url`
   du repo. Le `homepage` gère les cas tordus (fichier d'entrée non standard, domaine custom).
